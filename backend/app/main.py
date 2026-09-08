@@ -238,9 +238,9 @@ async def root(request: Request):
     <p>SIH Problem Statement 26056: Real-Time Airfare Price Index for India with 30-day DGCA backtesting and passenger traffic route weights.</p>
     
     <div class="grid">
-      <a href="http://localhost:3000" class="btn" target="_blank">
+      <a href="/app/" class="btn">
         <span class="btn-title">🖥 Open UI Dashboard</span>
-        <span class="btn-desc">Interactive React charts & controls (Port 3000)</span>
+        <span class="btn-desc">Interactive React charts & controls (/app/)</span>
       </a>
       <a href="/docs" class="btn">
         <span class="btn-title">📚 Swagger API Docs</span>
