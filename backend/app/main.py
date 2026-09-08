@@ -71,21 +71,26 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"ML model not available: {e}")
 
-    # Start automated background pipeline scheduler
-    try:
-        from backend.app.services.scheduler_service import scheduler
-        scheduler.start()
-        logger.info("Automated ingestion & index scheduler activated")
-    except Exception as e:
-        logger.warning(f"Scheduler activation failed: {e}")
+    # Automated background pipeline scheduler (opt-in to conserve RAM on free-tier deployments)
+    ENABLE_SCHEDULER = os.getenv("ENABLE_SCHEDULER", "false").lower() in ("true", "1", "yes")
+    if ENABLE_SCHEDULER:
+        try:
+            from backend.app.services.scheduler_service import scheduler
+            scheduler.start()
+            logger.info("Automated ingestion & index scheduler activated")
+        except Exception as e:
+            logger.warning(f"Scheduler activation failed: {e}")
+    else:
+        logger.info("Automated background scheduler idle (ENABLE_SCHEDULER=false)")
 
     yield  # Application runs here
 
-    try:
-        from backend.app.services.scheduler_service import scheduler
-        scheduler.stop()
-    except Exception:
-        pass
+    if ENABLE_SCHEDULER:
+        try:
+            from backend.app.services.scheduler_service import scheduler
+            scheduler.stop()
+        except Exception:
+            pass
 
     logger.info("Airfare Intelligence Platform shutting down")
 
@@ -146,11 +151,12 @@ from fastapi import Request
 @app.get("/", tags=["System"])
 async def root(request: Request):
     accept = request.headers.get("accept", "")
+    index_file = PROJECT_ROOT / "frontend" / "dist" / "index.html"
     if "text/html" in accept:
         # If UI dashboard bundle exists, direct browser visitors directly to the React application
-        if (PROJECT_ROOT / "frontend" / "dist" / "index.html").exists():
-            from fastapi.responses import RedirectResponse
-            return RedirectResponse(url="/app/")
+        if index_file.exists():
+            from fastapi.responses import FileResponse
+            return FileResponse(str(index_file))
 
         html_content = """<!DOCTYPE html>
 <html lang="en">
@@ -275,6 +281,12 @@ async def root(request: Request):
 frontend_dist = PROJECT_ROOT / "frontend" / "dist"
 if frontend_dist.exists():
     from fastapi.staticfiles import StaticFiles
+    from fastapi.responses import RedirectResponse
+
+    @app.get("/app", include_in_schema=False)
+    async def app_redirect():
+        return RedirectResponse(url="/app/")
+
     app.mount("/app", StaticFiles(directory=str(frontend_dist), html=True), name="frontend")
     assets_dir = frontend_dist / "assets"
     if assets_dir.exists():

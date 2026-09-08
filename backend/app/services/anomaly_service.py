@@ -64,7 +64,16 @@ def detect_iqr_anomalies(
 
     Returns list of anomaly dicts (not yet saved to DB).
     """
-    query = db.query(AirfareObservation).filter(
+    query = db.query(
+        AirfareObservation.id,
+        AirfareObservation.origin,
+        AirfareObservation.destination,
+        AirfareObservation.airline,
+        AirfareObservation.fare,
+        AirfareObservation.cabin_class,
+        AirfareObservation.travel_date,
+        AirfareObservation.source,
+    ).filter(
         AirfareObservation.is_demo_anomaly == False  # Don't detect our own seeds
     )
 
@@ -75,20 +84,27 @@ def detect_iqr_anomalies(
     if cabin_class and cabin_class.lower() != "all":
         query = query.filter(AirfareObservation.cabin_class == cabin_class)
 
-    obs = query.all()
-    if not obs:
+    # Filter by lookback period if specified to avoid full dataset memory overhead
+    if lookback_days:
+        from datetime import timedelta
+        cutoff = date.today() - timedelta(days=lookback_days)
+        query = query.filter(AirfareObservation.travel_date >= cutoff)
+
+    # Bound query to prevent memory exhaustion on constrained environments
+    rows = query.order_by(AirfareObservation.travel_date.desc()).limit(20000).all()
+    if not rows:
         return []
 
     df = pd.DataFrame([{
-        "id": o.id,
-        "origin": o.origin,
-        "destination": o.destination,
-        "airline": o.airline,
-        "fare": o.fare,
-        "cabin_class": o.cabin_class,
-        "travel_date": o.travel_date,
-        "source": o.source,
-    } for o in obs])
+        "id": r[0],
+        "origin": r[1],
+        "destination": r[2],
+        "airline": r[3],
+        "fare": r[4],
+        "cabin_class": r[5],
+        "travel_date": r[6],
+        "source": r[7],
+    } for r in rows])
 
     anomalies = []
 
@@ -168,7 +184,17 @@ def detect_isolation_forest_anomalies(
 
     Returns list of anomaly dicts.
     """
-    query = db.query(AirfareObservation).filter(
+    query = db.query(
+        AirfareObservation.id,
+        AirfareObservation.origin,
+        AirfareObservation.destination,
+        AirfareObservation.airline,
+        AirfareObservation.fare,
+        AirfareObservation.stops,
+        AirfareObservation.days_left,
+        AirfareObservation.travel_date,
+        AirfareObservation.source,
+    ).filter(
         AirfareObservation.is_demo_anomaly == False
     )
     if origin:
@@ -176,24 +202,25 @@ def detect_isolation_forest_anomalies(
     if destination:
         query = query.filter(AirfareObservation.destination == destination)
 
-    obs = query.all()
-    if len(obs) < min_observations:
+    # Bound query to prevent memory exhaustion on constrained environments
+    rows = query.order_by(AirfareObservation.travel_date.desc()).limit(5000).all()
+    if len(rows) < min_observations:
         logger.info(
-            f"Insufficient data for Isolation Forest ({len(obs)} rows, need {min_observations})"
+            f"Insufficient data for Isolation Forest ({len(rows)} rows, need {min_observations})"
         )
         return []
 
     df = pd.DataFrame([{
-        "id": o.id,
-        "origin": o.origin,
-        "destination": o.destination,
-        "airline": o.airline,
-        "fare": o.fare,
-        "stops": o.stops or 0,
-        "days_left": o.days_left or 30,
-        "travel_date": o.travel_date,
-        "source": o.source,
-    } for o in obs])
+        "id": r[0],
+        "origin": r[1],
+        "destination": r[2],
+        "airline": r[3],
+        "fare": r[4],
+        "stops": r[5] or 0,
+        "days_left": r[6] or 30,
+        "travel_date": r[7],
+        "source": r[8],
+    } for r in rows])
 
     feature_cols = ["fare", "stops", "days_left"]
     X = df[feature_cols].fillna(df[feature_cols].median())

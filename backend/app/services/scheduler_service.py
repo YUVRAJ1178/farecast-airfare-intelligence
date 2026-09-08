@@ -53,8 +53,8 @@ class IngestionScheduler:
 
     async def _run_loop(self):
         """Main periodic scheduling loop."""
-        # Initial wait before first scheduled run to let app fully boot
-        await asyncio.sleep(10)
+        # Wait full interval before first run so application boots smoothly and serves traffic
+        await asyncio.sleep(self.interval_seconds)
         while self._running:
             try:
                 self.next_run = datetime.now(timezone.utc) + timedelta(seconds=self.interval_seconds)
