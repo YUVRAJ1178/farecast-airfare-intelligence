@@ -83,6 +83,17 @@ async def lifespan(app: FastAPI):
     else:
         logger.info("Automated background scheduler idle (ENABLE_SCHEDULER=false)")
 
+    # Pre-warm default dashboard cache for instant first visitor response
+    try:
+        from backend.app.database import get_session_factory
+        from backend.app.routes.dashboard import dashboard_summary
+        SessionLocal = get_session_factory()
+        with SessionLocal() as session:
+            await dashboard_summary(None, None, None, None, None, session)
+        logger.info("Default dashboard summary cached successfully")
+    except Exception as e:
+        logger.warning(f"Dashboard cache pre-warm skipped: {e}")
+
     yield  # Application runs here
 
     if ENABLE_SCHEDULER:

@@ -49,65 +49,66 @@ def compute_route_index(
 
     Returns None if insufficient data to compute index.
     """
-    query = db.query(AirfareObservation).filter(
+    from sqlalchemy import func
+
+    base_query = db.query(AirfareObservation).filter(
         AirfareObservation.origin == origin,
         AirfareObservation.destination == destination,
-        AirfareObservation.is_demo_anomaly == False,  # Exclude seeded anomalies
+        AirfareObservation.is_demo_anomaly == False,
     )
-
     if cabin_class and cabin_class.lower() != "all":
-        query = query.filter(AirfareObservation.cabin_class == cabin_class)
+        base_query = base_query.filter(AirfareObservation.cabin_class == cabin_class)
 
-    all_obs = query.all()
-    if not all_obs:
-        logger.warning(f"No observations found for route {origin}→{destination}")
-        return None
-
-    df = pd.DataFrame([{
-        "fare": o.fare,
-        "travel_date": o.travel_date,
-        "cabin_class": o.cabin_class,
-    } for o in all_obs])
-
-    df["travel_date"] = pd.to_datetime(df["travel_date"])
-
-    # Baseline fares
-    baseline_mask = (
-        (df["travel_date"].dt.date >= baseline_start) &
-        (df["travel_date"].dt.date <= baseline_end)
-    )
-    baseline_df = df[baseline_mask]
-
-    if len(baseline_df) < 5:
-        logger.warning(
-            f"Insufficient baseline data for {origin}→{destination}: "
-            f"{len(baseline_df)} rows. Need at least 5."
+    # Baseline query via direct SQL aggregation
+    baseline_stats = (
+        base_query.filter(
+            AirfareObservation.travel_date >= baseline_start,
+            AirfareObservation.travel_date <= baseline_end,
         )
-        # Use overall median as fallback baseline
-        baseline_avg = float(df["fare"].median())
-        baseline_label = "overall median (insufficient baseline period data)"
+        .with_entities(
+            func.avg(AirfareObservation.fare),
+            func.count(AirfareObservation.id),
+        )
+        .first()
+    )
+
+    baseline_avg = float(baseline_stats[0]) if baseline_stats and baseline_stats[0] else None
+    baseline_count = int(baseline_stats[1]) if baseline_stats and baseline_stats[1] else 0
+
+    if baseline_count < 5 or baseline_avg is None:
+        # Fallback to route-level overall average
+        fallback_stats = (
+            base_query.with_entities(
+                func.avg(AirfareObservation.fare),
+                func.count(AirfareObservation.id),
+            )
+            .first()
+        )
+        if not fallback_stats or not fallback_stats[0]:
+            logger.warning(f"Insufficient baseline data for {origin}→{destination}")
+            return None
+        baseline_avg = float(fallback_stats[0])
+        baseline_label = "overall average (insufficient baseline period data)"
     else:
-        baseline_avg = float(baseline_df["fare"].mean())
         baseline_label = f"{baseline_start} to {baseline_end}"
 
-    # Period fares
-    period_mask = (
-        (df["travel_date"].dt.date >= period_start) &
-        (df["travel_date"].dt.date <= period_end)
-    )
-    period_df = df[period_mask]
-
-    if len(period_df) < 3:
-        logger.warning(
-            f"Insufficient period data for {origin}→{destination} "
-            f"({period_start} to {period_end}): {len(period_df)} rows"
+    # Period query via direct SQL aggregation
+    period_stats = (
+        base_query.filter(
+            AirfareObservation.travel_date >= period_start,
+            AirfareObservation.travel_date <= period_end,
         )
-        return None
+        .with_entities(
+            func.avg(AirfareObservation.fare),
+            func.count(AirfareObservation.id),
+        )
+        .first()
+    )
 
-    period_avg = float(period_df["fare"].mean())
+    period_avg = float(period_stats[0]) if period_stats and period_stats[0] else None
+    period_count = int(period_stats[1]) if period_stats and period_stats[1] else 0
 
-    if baseline_avg <= 0:
-        logger.error(f"Invalid baseline average fare: {baseline_avg}")
+    if period_count < 3 or period_avg is None or baseline_avg <= 0:
         return None
 
     index_value = (period_avg / baseline_avg) * 100.0
@@ -121,7 +122,7 @@ def compute_route_index(
         "baseline_avg_fare": round(baseline_avg, 2),
         "index_value": round(index_value, 2),
         "baseline_period": baseline_label,
-        "observation_count": len(period_df),
+        "observation_count": period_count,
         "cabin_class": cabin_class or "All",
         "is_prototype": True,
         "note": "Prototype Airfare Price Index - not the official GoI CPI index.",
@@ -137,65 +138,86 @@ def compute_monthly_index_series(
     baseline_end: date = DEFAULT_BASELINE_END,
 ) -> list[dict]:
     """
-    Compute monthly index values for a route over all available data.
+    Compute monthly index values for a route over all available data using fast SQL aggregation.
     Returns a list of monthly index dicts for charting.
     """
-    query = db.query(AirfareObservation).filter(
+    from sqlalchemy import func, String
+
+    base_query = db.query(AirfareObservation).filter(
         AirfareObservation.origin == origin,
         AirfareObservation.destination == destination,
         AirfareObservation.is_demo_anomaly == False,
     )
     if cabin_class and cabin_class.lower() != "all":
-        query = query.filter(AirfareObservation.cabin_class == cabin_class)
+        base_query = base_query.filter(AirfareObservation.cabin_class == cabin_class)
 
-    all_obs = query.all()
-    if not all_obs:
-        return []
-
-    df = pd.DataFrame([{
-        "fare": o.fare,
-        "travel_date": pd.to_datetime(o.travel_date),
-    } for o in all_obs])
-
-    # Baseline
-    baseline_mask = (
-        (df["travel_date"].dt.date >= baseline_start) &
-        (df["travel_date"].dt.date <= baseline_end)
+    b_stats = (
+        base_query.filter(
+            AirfareObservation.travel_date >= baseline_start,
+            AirfareObservation.travel_date <= baseline_end,
+        )
+        .with_entities(
+            func.avg(AirfareObservation.fare),
+            func.count(AirfareObservation.id),
+        )
+        .first()
     )
-    baseline_df = df[baseline_mask]
-    if len(baseline_df) < 5:
-        baseline_avg = float(df["fare"].median())
+
+    b_avg = float(b_stats[0]) if b_stats and b_stats[0] else None
+    b_cnt = int(b_stats[1]) if b_stats and b_stats[1] else 0
+
+    if b_cnt < 5 or b_avg is None:
+        fallback = (
+            base_query.with_entities(
+                func.avg(AirfareObservation.fare),
+                func.count(AirfareObservation.id),
+            )
+            .filter(AirfareObservation.fare.isnot(None))
+            .first()
+        )
+        if not fallback or not fallback[0]:
+            return []
+        baseline_avg = float(fallback[0])
         baseline_label = "overall median"
     else:
-        baseline_avg = float(baseline_df["fare"].mean())
+        baseline_avg = b_avg
         baseline_label = f"{baseline_start} to {baseline_end}"
 
     if baseline_avg <= 0:
         return []
 
-    # Monthly grouping
-    df["year_month"] = df["travel_date"].dt.to_period("M")
-    monthly = df.groupby("year_month")["fare"].agg(["mean", "count"])
+    month_col = func.substr(func.cast(AirfareObservation.travel_date, String), 1, 7)
+    monthly_rows = (
+        base_query.filter(AirfareObservation.travel_date.isnot(None))
+        .with_entities(
+            month_col.label("period"),
+            func.avg(AirfareObservation.fare).label("mean_fare"),
+            func.count(AirfareObservation.id).label("cnt"),
+        )
+        .group_by(month_col)
+        .order_by(month_col.asc())
+        .all()
+    )
 
     results = []
-    for period, row in monthly.iterrows():
-        if row["count"] < 3:
-            continue  # Skip months with too few observations
-        avg_fare = float(row["mean"])
-        index_val = (avg_fare / baseline_avg) * 100.0
+    for r in monthly_rows:
+        if int(r[2]) < 3:
+            continue
+        avg_f = float(r[1])
+        index_val = (avg_f / baseline_avg) * 100.0
         results.append({
-            "period": str(period),
-            "avg_fare": round(avg_fare, 2),
+            "period": str(r[0]),
+            "avg_fare": round(avg_f, 2),
             "index_value": round(index_val, 2),
             "baseline_fare": round(baseline_avg, 2),
-            "observation_count": int(row["count"]),
+            "observation_count": int(r[2]),
             "origin": origin,
             "destination": destination,
             "baseline_period": baseline_label,
             "is_prototype": True,
         })
 
-    return sorted(results, key=lambda x: x["period"])
+    return results
 
 
 def compute_aggregate_index(
@@ -209,6 +231,7 @@ def compute_aggregate_index(
     baseline_start: date = DEFAULT_BASELINE_START,
     baseline_end: date = DEFAULT_BASELINE_END,
     use_dgca_weights: bool = True,
+    include_monthly_series: bool = True,
 ) -> dict:
     """
     Compute an aggregate Airfare Price Index across multiple routes.
@@ -309,43 +332,44 @@ def compute_aggregate_index(
 
     divergence = round(aggregate_index - unweighted_index, 2)
 
-    # Compute aggregate monthly series by averaging all route monthly series
-    monthly_map: dict = {}
-    for r_orig, r_dest in routes:
-        series = compute_monthly_index_series(
-            db=db,
-            origin=r_orig,
-            destination=r_dest,
-            cabin_class=cabin_class,
-            baseline_start=baseline_start,
-            baseline_end=baseline_end,
-        )
-        for entry in series:
-            period = entry["period"]
-            if period not in monthly_map:
-                monthly_map[period] = {"values": [], "fares": []}
-            monthly_map[period]["values"].append(entry["index_value"])
-            monthly_map[period]["fares"].append(entry["avg_fare"])
-
-    # Build DGCA-weighted monthly aggregate series
+    # Compute aggregate monthly series if requested
     monthly_series = []
-    for period in sorted(monthly_map.keys()):
-        vals = monthly_map[period]["values"]
-        fares = monthly_map[period]["fares"]
-        if vals:
-            avg_idx = round(float(np.mean(vals)), 2)
-            avg_fare_m = round(float(np.mean(fares)), 2)
-            monthly_series.append({
-                "period": period,
-                "avg_fare": avg_fare_m,
-                "index_value": avg_idx,
-                "baseline_fare": round(aggregate_baseline, 2),
-                "observation_count": len(vals),
-                "origin": origin or "ALL",
-                "destination": destination or "ALL",
-                "baseline_period": f"{baseline_start} to {baseline_end}",
-                "is_prototype": True,
-            })
+    if include_monthly_series:
+        monthly_map: dict = {}
+        for r_orig, r_dest in routes:
+            series = compute_monthly_index_series(
+                db=db,
+                origin=r_orig,
+                destination=r_dest,
+                cabin_class=cabin_class,
+                baseline_start=baseline_start,
+                baseline_end=baseline_end,
+            )
+            for entry in series:
+                period = entry["period"]
+                if period not in monthly_map:
+                    monthly_map[period] = {"values": [], "fares": []}
+                monthly_map[period]["values"].append(entry["index_value"])
+                monthly_map[period]["fares"].append(entry["avg_fare"])
+
+        # Build DGCA-weighted monthly aggregate series
+        for period in sorted(monthly_map.keys()):
+            vals = monthly_map[period]["values"]
+            fares = monthly_map[period]["fares"]
+            if vals:
+                avg_idx = round(float(np.mean(vals)), 2)
+                avg_fare_m = round(float(np.mean(fares)), 2)
+                monthly_series.append({
+                    "period": period,
+                    "avg_fare": avg_fare_m,
+                    "index_value": avg_idx,
+                    "baseline_fare": round(aggregate_baseline, 2),
+                    "observation_count": len(vals),
+                    "origin": origin or "ALL",
+                    "destination": destination or "ALL",
+                    "baseline_period": f"{baseline_start} to {baseline_end}",
+                    "is_prototype": True,
+                })
 
     return {
         "origin": origin or "ALL",

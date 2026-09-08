@@ -16,6 +16,8 @@ DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() in ("true", "1", "yes")
 
 _cached_agg_index = None
 _cached_time = 0
+_cached_default_dashboard = None
+_cached_default_time = 0
 
 
 @router.get("/dashboard-summary")
@@ -39,6 +41,13 @@ async def dashboard_summary(
         (isinstance(cabin_class, str) and cabin_class.strip() and cabin_class.strip().lower() not in ("", "all")) or
         (isinstance(travel_date, str) and travel_date.strip())
     )
+
+    if not has_custom_filters:
+        global _cached_default_dashboard, _cached_default_time
+        import time as py_time
+        now = py_time.time()
+        if _cached_default_dashboard and (now - _cached_default_time < 300):
+            return _cached_default_dashboard
 
     base_filters = [AirfareObservation.is_demo_anomaly == False]
     if isinstance(origin, str) and origin.strip():
@@ -141,7 +150,7 @@ async def dashboard_summary(
         if _cached_agg_index and (now - _cached_time < 300):
             agg_index = _cached_agg_index
         else:
-            agg_index = compute_aggregate_index(db=db, use_dgca_weights=True)
+            agg_index = compute_aggregate_index(db=db, use_dgca_weights=True, include_monthly_series=False)
             _cached_agg_index = agg_index
             _cached_time = now
 
@@ -292,7 +301,7 @@ async def dashboard_summary(
         "counts": {r[0] or "UNTAGGED": r[1] for r in prov_rows},
     }
 
-    return {
+    response_data = {
         "kpi": {
             "avg_fare": avg_fare,
             "min_fare": min_fare,
@@ -318,6 +327,12 @@ async def dashboard_summary(
         "provenance_breakdown": provenance_breakdown,
         "note": source_note,
     }
+
+    if not has_custom_filters:
+        _cached_default_dashboard = response_data
+        _cached_default_time = py_time.time()
+
+    return response_data
 
 
 @router.get("/live-status")
