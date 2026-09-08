@@ -1,8 +1,23 @@
 # ============================================================
 # Airfare Intelligence Platform (FareCast) — Production Dockerfile
+# Multi-stage build: Node.js frontend build + Python backend
 # Optimized for Render Cloud Web Service Deployment
 # ============================================================
 
+# ── Stage 1: Build the React frontend ──────────────────────
+FROM node:20-slim AS frontend-builder
+
+WORKDIR /frontend
+
+# Copy package files and install deps
+COPY frontend/package*.json ./
+RUN npm ci --silent
+
+# Copy source and build
+COPY frontend/ ./
+RUN npm run build
+
+# ── Stage 2: Python production runtime ─────────────────────
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -30,7 +45,9 @@ COPY backend/ ./backend/
 COPY data/ ./data/
 COPY ml/ ./ml/
 COPY models/ ./models/
-COPY frontend/dist/ ./frontend/dist/
+
+# Copy the freshly built frontend from Stage 1
+COPY --from=frontend-builder /frontend/dist/ ./frontend/dist/
 
 # Copy baseline verified database (179k observations with full provenance)
 COPY airfare.db ./airfare.db
@@ -42,7 +59,7 @@ RUN mkdir -p data/raw data/processed data/processed/eda logs
 EXPOSE 10000
 
 # Healthcheck for container status with start period for clean initialisation
-HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=30s \
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=60s \
     CMD curl -f http://localhost:${PORT:-10000}/health || exit 1
 
 # Launch production server binding to the environment-assigned port (defaults to 10000)

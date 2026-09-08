@@ -90,22 +90,25 @@ export default function App() {
   }, [filters.origin, filters.destination, filters.airline, filters.cabinClass, filters.travelDate])
 
   const loadIndex = useCallback(async () => {
+    const params = {}
+    if (filters.airline) params.airline = filters.airline
+    if (filters.cabinClass) params.cabin_class = filters.cabinClass
     if (filters.origin && filters.destination) {
       try {
-        const d = await api.indexRoute(filters.origin, filters.destination)
+        const d = await api.indexRoute(filters.origin, filters.destination, params)
         setIndexData(d)
       } catch {
         setIndexData(null)
       }
     } else {
       try {
-        const d = await api.indexAggregate({ origin: filters.origin, destination: filters.destination })
+        const d = await api.indexAggregate({ origin: filters.origin, destination: filters.destination, ...params })
         setIndexData(d)
       } catch {
         setIndexData(null)
       }
     }
-  }, [filters.origin, filters.destination])
+  }, [filters.origin, filters.destination, filters.airline, filters.cabinClass])
 
   useEffect(() => {
     loadData()
@@ -137,21 +140,49 @@ export default function App() {
     { id: 'air-corridor', label: 'India Map\n(Corridors)', icon: '🗺️' },
   ]
 
-  const topRoutesList = [
-    { rank: 1, route: 'DEL → BOM', fare: 8542, change: 2.4 },
-    { rank: 2, route: 'BOM → DEL', fare: 8120, change: 1.8 },
-    { rank: 3, route: 'DEL → BLR', fare: 7824, change: -0.6 },
-    { rank: 4, route: 'BLR → DEL', fare: 7615, change: 1.2 },
-    { rank: 5, route: 'DEL → HYD', fare: 6982, change: 0.9 },
-  ]
+  // Airline colour palette for dynamic comparison table
+  const AIRLINE_COLORS = {
+    'IndiGo': '#0047AB', 'Air India': '#dc2626', 'SpiceJet': '#ea580c',
+    'Go First': '#16a34a', 'Vistara': '#701a75', 'Akasa Air': '#f59e0b',
+    'Blue Dart': '#1e40af', 'Alliance Air': '#0891b2', 'StarAir': '#7c3aed',
+  }
+  const AIRLINE_CODES = {
+    'IndiGo': '6E', 'Air India': 'AI', 'SpiceJet': 'SG',
+    'Go First': 'G8', 'Vistara': 'UK', 'Akasa Air': 'QP',
+  }
 
-  const airlineFaresList = [
-    { airline: 'IndiGo', code: '6E', fare: 6210, trend: 2.1, color: '#0047AB' },
-    { airline: 'Air India', code: 'AI', fare: 7842, trend: 1.4, color: '#dc2626' },
-    { airline: 'SpiceJet', code: 'SG', fare: 5980, trend: -3.7, color: '#ea580c' },
-    { airline: 'Go First', code: 'G8', fare: 6542, trend: 0.8, color: '#16a34a' },
-    { airline: 'Vistara', code: 'UK', fare: 8276, trend: 1.9, color: '#701a75' },
-  ]
+  // Dynamic top routes from API (falls back to static sample)
+  const topRoutesList = summary?.top_routes?.length
+    ? summary.top_routes.slice(0, 5).map((r, i) => ({
+        rank: i + 1,
+        route: r.route || `${r.origin}→${r.destination}`,
+        fare: Math.round(r.avg_fare),
+        change: 0,
+      }))
+    : [
+        { rank: 1, route: 'DEL→BOM', fare: 8542, change: 0 },
+        { rank: 2, route: 'BOM→DEL', fare: 8120, change: 0 },
+        { rank: 3, route: 'DEL→BLR', fare: 7824, change: 0 },
+        { rank: 4, route: 'BLR→DEL', fare: 7615, change: 0 },
+        { rank: 5, route: 'DEL→HYD', fare: 6982, change: 0 },
+      ]
+
+  // Dynamic airline comparison from API (falls back to static sample)
+  const airlineFaresList = summary?.airline_comparison?.length
+    ? summary.airline_comparison.slice(0, 5).map((a) => ({
+        airline: a.airline,
+        code: AIRLINE_CODES[a.airline] || a.airline?.slice(0, 2).toUpperCase() || '??',
+        fare: Math.round(a.avg_fare),
+        trend: 0,
+        color: AIRLINE_COLORS[a.airline] || '#6366f1',
+      }))
+    : [
+        { airline: 'IndiGo', code: '6E', fare: 6210, trend: 0, color: '#0047AB' },
+        { airline: 'Air India', code: 'AI', fare: 7842, trend: 0, color: '#dc2626' },
+        { airline: 'SpiceJet', code: 'SG', fare: 5980, trend: 0, color: '#ea580c' },
+        { airline: 'Go First', code: 'G8', fare: 6542, trend: 0, color: '#16a34a' },
+        { airline: 'Vistara', code: 'UK', fare: 8276, trend: 0, color: '#701a75' },
+      ]
 
   return (
     <div className="app-shell">
@@ -306,35 +337,46 @@ export default function App() {
                 <div className="stat-card">
                   <div className="stat-card-icon blue">🛣️</div>
                   <div>
-                    <div className="stat-card-label">Total Routes</div>
-                    <div className="stat-card-value">1,248</div>
-                    <div className="stat-card-change up">↑ 12% vs. last month</div>
+                    <div className="stat-card-label">Monitored Routes</div>
+                    <div className="stat-card-value">
+                      {filters.origin && filters.destination ? `${filters.origin} → ${filters.destination}` : (summary?.top_routes?.length ? `${summary.top_routes.length} Active` : '272 Routes')}
+                    </div>
+                    <div className="stat-card-change up">{filters.origin && filters.destination ? 'Corridor selected' : '30 DGCA trunk corridors'}</div>
                   </div>
                 </div>
                 <div className="stat-card">
                   <div className="stat-card-icon purple">👥</div>
                   <div>
                     <div className="stat-card-label">Total Observations</div>
-                    <div className="stat-card-value">60,000+</div>
-                    <div className="stat-card-change up">↑ 8% vs. last month</div>
+                    <div className="stat-card-value">
+                      {summary?.kpi?.total_observations != null ? Number(summary.kpi.total_observations).toLocaleString('en-IN') : '179,352'}
+                    </div>
+                    <div className="stat-card-change up">{filters.airline ? `${filters.airline} records` : 'Verified database pool'}</div>
                   </div>
                 </div>
                 <div className="stat-card">
                   <div className="stat-card-icon green">₹</div>
                   <div>
                     <div className="stat-card-label">Avg. Fare</div>
-                    <div className="stat-card-value">₹6,471</div>
-                    <div className="stat-card-change down">↓ 3% vs. last month</div>
+                    <div className="stat-card-value">
+                      {summary?.kpi?.avg_fare != null ? `₹${Number(summary.kpi.avg_fare).toLocaleString('en-IN', { maximumFractionDigits: 0 })}` : '₹6,471'}
+                    </div>
+                    <div className={`stat-card-change ${(summary?.kpi?.airfare_price_index ?? 100) >= 100 ? 'up' : 'down'}`}>
+                      {summary?.kpi?.airfare_price_index != null ? `${summary.kpi.airfare_price_index >= 100 ? '↑' : '↓'} ${Math.abs(summary.kpi.airfare_price_index - 100).toFixed(1)}% vs. baseline` : 'Market benchmark'}
+                    </div>
                   </div>
                 </div>
                 <div className="stat-card">
                   <div className="stat-card-icon orange">✈️</div>
                   <div>
                     <div className="stat-card-label">Active Airlines</div>
-                    <div className="stat-card-value">18</div>
-                    <div className="stat-card-change neutral">— no change</div>
+                    <div className="stat-card-value">
+                      {filters.airline ? filters.airline : (summary?.airline_comparison?.length ? `${summary.airline_comparison.length} Active` : '11 Airlines')}
+                    </div>
+                    <div className="stat-card-change neutral">{filters.airline ? 'Filtered carrier' : 'All carriers included'}</div>
                   </div>
                 </div>
+              </div>
               {/* DATA PROVENANCE HONESTY BANNER */}
               <div style={{
                 display: 'flex',
@@ -397,7 +439,7 @@ export default function App() {
                       onChange={(e) => {
                         const val = e.target.value
                         const newDest = pendingFilters.destination === val ? '' : pendingFilters.destination
-                        setPendingFilters({ ...pendingFilters, origin: val, destination: newDest })
+                        setPendingFilters((prev) => ({ ...prev, origin: val, destination: newDest }))
                       }}
                     >
                       {ALL_AIRPORTS.map((code) => (
@@ -413,7 +455,7 @@ export default function App() {
                       onChange={(e) => {
                         const val = e.target.value
                         const newOrig = pendingFilters.origin === val ? '' : pendingFilters.origin
-                        setPendingFilters({ ...pendingFilters, destination: val, origin: newOrig })
+                        setPendingFilters((prev) => ({ ...prev, destination: val, origin: newOrig }))
                       }}
                     >
                       {ALL_AIRPORTS.filter((c) => c !== pendingFilters.origin).map((code) => (
@@ -426,7 +468,12 @@ export default function App() {
                     <select
                       className="filter-control-select"
                       value={pendingFilters.airline}
-                      onChange={(e) => setPendingFilters({ ...pendingFilters, airline: e.target.value })}
+                      onChange={(e) => {
+                        const updated = { ...pendingFilters, airline: e.target.value }
+                        setPendingFilters(updated)
+                        // Apply airline immediately so KPI cards update on selection
+                        setFilters(updated)
+                      }}
                     >
                       <option value="">All Airlines</option>
                       <option value="IndiGo">IndiGo</option>
@@ -461,7 +508,8 @@ export default function App() {
                   <button
                     className="btn-apply-filters-main"
                     onClick={() => {
-                      setFilters({ ...pendingFilters })
+                      // Sync pendingFilters → filters to trigger backend fetch
+                      setFilters((prev) => ({ ...prev, ...pendingFilters }))
                     }}
                   >
                     <span>≡</span> Apply Filters
@@ -477,6 +525,43 @@ export default function App() {
                   >
                     ↺ Reset
                   </button>
+                </div>
+
+                {/* Active Filter Indicators */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 14px',
+                  background: 'rgba(59, 130, 246, 0.08)',
+                  border: '1px solid rgba(59, 130, 246, 0.25)',
+                  borderRadius: 8,
+                  margin: '10px 0 16px',
+                  fontSize: '0.8rem',
+                  color: '#38bdf8',
+                  flexWrap: 'wrap',
+                }}>
+                  <span style={{ fontWeight: 600 }}>Active Filters:</span>
+                  <span style={{ background: '#1e293b', padding: '3px 8px', borderRadius: 4, color: '#f8fafc' }}>
+                    {filters.origin || 'ALL'} → {filters.destination || 'ALL'}
+                  </span>
+                  {filters.airline ? (
+                    <span style={{ background: '#1e293b', padding: '3px 8px', borderRadius: 4, color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.4)' }}>
+                      ✈ Airline: <strong>{filters.airline}</strong>
+                    </span>
+                  ) : (
+                    <span style={{ color: '#94a3b8' }}>All Airlines</span>
+                  )}
+                  {filters.cabinClass && (
+                    <span style={{ background: '#1e293b', padding: '3px 8px', borderRadius: 4, color: '#a78bfa' }}>
+                      Class: <strong>{filters.cabinClass}</strong>
+                    </span>
+                  )}
+                  {filters.travelDate && (
+                    <span style={{ background: '#1e293b', padding: '3px 8px', borderRadius: 4, color: '#34d399' }}>
+                      Date: <strong>{filters.travelDate}</strong>
+                    </span>
+                  )}
                 </div>
 
                 {/* 5 KPI Sub-Cards — dynamic from API */}
@@ -514,9 +599,9 @@ export default function App() {
                         <div className="kpi-subcard-left">
                           <div className="kpi-subcard-icon green">📊</div>
                           <div>
-                            <div className="kpi-subcard-label">Avg Fare</div>
+                            <div className="kpi-subcard-label">{filters.airline ? `${filters.airline} Avg Fare` : 'Avg Fare'}</div>
                             <div className="kpi-subcard-val">{fmtFare(avgFare)}</div>
-                            <div className="kpi-subcard-sub green">Aggregated market average</div>
+                            <div className="kpi-subcard-sub green">{filters.airline ? `${filters.airline} filtered average` : 'Aggregated market average'}</div>
                           </div>
                         </div>
                         <div className="kpi-subcard-badge green">📈</div>
@@ -547,7 +632,7 @@ export default function App() {
                         <div className="kpi-subcard-left">
                           <div className="kpi-subcard-icon purple">⚖️</div>
                           <div>
-                            <div className="kpi-subcard-label">Airfare Price Index</div>
+                            <div className="kpi-subcard-label">{filters.airline ? `${filters.airline} Price Index` : (filters.origin && filters.destination ? `${filters.origin}→${filters.destination} Index` : 'Airfare Price Index')}</div>
                             {idxVal != null ? (
                               <>
                                 <div className="kpi-subcard-val">{idxVal.toFixed(1)}</div>

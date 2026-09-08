@@ -21,6 +21,11 @@ const IATA_NAMES = {
 export default function FilterPanel({ filters, onFilterChange }) {
   const [routes, setRoutes] = useState([])
   const [airlines, setAirlines] = useState([])
+  const [draft, setDraft] = useState(filters || {})
+
+  useEffect(() => {
+    setDraft(filters || {})
+  }, [filters])
 
   useEffect(() => {
     api.routes().then(setRoutes).catch(() => {})
@@ -29,27 +34,42 @@ export default function FilterPanel({ filters, onFilterChange }) {
 
   const origins = [...new Set(routes.map((r) => r.origin))].sort()
   const destinations = routes
-    .filter((r) => !filters.origin || r.origin === filters.origin)
+    .filter((r) => !draft.origin || r.origin === draft.origin)
     .map((r) => r.destination)
-    .filter((v, i, a) => a.indexOf(v) === i && v !== filters.origin)
+    .filter((v, i, a) => a.indexOf(v) === i && v !== draft.origin)
     .sort()
 
   const handleOriginChange = (e) => {
     const val = e.target.value
-    const newDest = filters.destination === val ? '' : filters.destination
-    onFilterChange({ ...filters, origin: val, destination: newDest })
+    const newDest = draft.destination === val ? '' : draft.destination
+    const updated = { ...draft, origin: val, destination: newDest }
+    setDraft(updated)
+    onFilterChange(updated)
   }
 
   const handleDestChange = (e) => {
     const val = e.target.value
-    const newOrig = filters.origin === val ? '' : filters.origin
-    onFilterChange({ ...filters, destination: val, origin: newOrig })
+    const newOrig = draft.origin === val ? '' : draft.origin
+    const updated = { ...draft, destination: val, origin: newOrig }
+    setDraft(updated)
+    onFilterChange(updated)
   }
 
-  const set = (key) => (e) => onFilterChange({ ...filters, [key]: e.target.value })
+  const set = (key) => (e) => {
+    const updated = { ...draft, [key]: e.target.value }
+    setDraft(updated)
+    onFilterChange(updated)
+  }
 
-  const reset = () =>
-    onFilterChange({ origin: '', destination: '', airline: '', cabinClass: 'Economy', travelDate: '' })
+  const reset = () => {
+    const res = { origin: '', destination: '', airline: '', cabinClass: 'Economy', travelDate: '' }
+    setDraft(res)
+    onFilterChange(res)
+  }
+
+  const apply = () => {
+    onFilterChange({ ...draft })
+  }
 
   const todayStr = new Date().toISOString().split('T')[0]
 
@@ -59,7 +79,7 @@ export default function FilterPanel({ filters, onFilterChange }) {
       <div className="filter-group">
         <label className="filter-label" htmlFor="filter-origin">Origin</label>
         <div className="filter-input-wrap">
-          <select id="filter-origin" className="filter-select" value={filters.origin || 'DEL'} onChange={handleOriginChange}>
+          <select id="filter-origin" className="filter-select" value={draft.origin || 'DEL'} onChange={handleOriginChange}>
             <option value="">All Origins</option>
             {origins.map((o) => (
               <option key={o} value={o}>{IATA_NAMES[o] || o}</option>
@@ -72,7 +92,7 @@ export default function FilterPanel({ filters, onFilterChange }) {
       <div className="filter-group">
         <label className="filter-label" htmlFor="filter-destination">Destination</label>
         <div className="filter-input-wrap">
-          <select id="filter-destination" className="filter-select" value={filters.destination || ''} onChange={handleDestChange}>
+          <select id="filter-destination" className="filter-select" value={draft.destination || ''} onChange={handleDestChange}>
             <option value="">All Destinations</option>
             {destinations.map((d) => (
               <option key={d} value={d}>{IATA_NAMES[d] || d}</option>
@@ -85,7 +105,7 @@ export default function FilterPanel({ filters, onFilterChange }) {
       <div className="filter-group">
         <label className="filter-label" htmlFor="filter-airline">Airline</label>
         <div className="filter-input-wrap">
-          <select id="filter-airline" className="filter-select" value={filters.airline || ''} onChange={set('airline')}>
+          <select id="filter-airline" className="filter-select" value={draft.airline || ''} onChange={set('airline')}>
             <option value="">All Airlines</option>
             {airlines.map((a) => (
               <option key={a.name || a} value={a.name || a}>{a.name || a}</option>
@@ -103,7 +123,7 @@ export default function FilterPanel({ filters, onFilterChange }) {
             type="date"
             min={todayStr}
             className="filter-input"
-            value={filters.travelDate || ''}
+            value={draft.travelDate || ''}
             onChange={set('travelDate')}
           />
         </div>
@@ -113,7 +133,7 @@ export default function FilterPanel({ filters, onFilterChange }) {
       <div className="filter-group">
         <label className="filter-label" htmlFor="filter-cabin">Cabin Class</label>
         <div className="filter-input-wrap">
-          <select id="filter-cabin" className="filter-select" value={filters.cabinClass || 'Economy'} onChange={set('cabinClass')}>
+          <select id="filter-cabin" className="filter-select" value={draft.cabinClass || 'Economy'} onChange={set('cabinClass')}>
             {CABIN_CLASSES.filter(Boolean).map((c) => (
               <option key={c} value={c}>{c}</option>
             ))}
@@ -123,7 +143,7 @@ export default function FilterPanel({ filters, onFilterChange }) {
 
       {/* Apply Filters & Reset */}
       <div className="filter-actions">
-        <button className="btn-apply-filters" onClick={() => onFilterChange({ ...filters })} id="filter-apply">
+        <button className="btn-apply-filters" onClick={apply} id="filter-apply">
           <span>✈</span> Apply Filters
         </button>
         <button className="btn-filter-reset" onClick={reset} id="filter-reset" title="Reset all filters">
