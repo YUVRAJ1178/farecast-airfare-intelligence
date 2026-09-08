@@ -10,7 +10,7 @@ WORKDIR /app
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PORT=8000 \
+    PORT=10000 \
     APP_ENV=production \
     DEMO_MODE=false
 
@@ -38,12 +38,12 @@ COPY airfare.db ./airfare.db
 # Ensure runtime directories exist with appropriate permissions
 RUN mkdir -p data/raw data/processed data/processed/eda logs
 
-# Expose internal port
-EXPOSE 8000
+# Expose Render standard port
+EXPOSE 10000
 
-# Healthcheck for container status
-HEALTHCHECK --interval=20s --timeout=5s --retries=3 \
-    CMD curl -f http://localhost:${PORT:-8000}/health || exit 1
+# Healthcheck for container status with start period for clean initialisation
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=30s \
+    CMD curl -f http://localhost:${PORT:-10000}/health || exit 1
 
-# Launch production server binding to the environment-assigned port
-CMD ["sh", "-c", "uvicorn backend.app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Launch production server binding to the environment-assigned port (defaults to 10000)
+CMD ["sh", "-c", "uvicorn backend.app.main:app --host 0.0.0.0 --port ${PORT:-10000}"]

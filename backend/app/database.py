@@ -25,18 +25,26 @@ def get_database_url() -> str:
     """
     Read database URL from environment.
     Supports both DATABASE_URL and individual component env vars.
+    Defaults directly to verified local SQLite if no external DB configured.
     """
     url = os.getenv("DATABASE_URL")
     if url:
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql://", 1)
         return url
 
-    # Build from components
-    host = os.getenv("POSTGRES_HOST", "localhost")
-    port = os.getenv("POSTGRES_PORT", "5432")
-    db = os.getenv("POSTGRES_DB", "airfare_intelligence")
-    user = os.getenv("POSTGRES_USER", "airfare_user")
-    password = os.getenv("POSTGRES_PASSWORD", "")
-    return f"postgresql://{user}:{password}@{host}:{port}/{db}"
+    # Only connect to Postgres if POSTGRES_HOST is explicitly provided
+    if os.getenv("POSTGRES_HOST"):
+        host = os.getenv("POSTGRES_HOST")
+        port = os.getenv("POSTGRES_PORT", "5432")
+        db = os.getenv("POSTGRES_DB", "airfare_intelligence")
+        user = os.getenv("POSTGRES_USER", "airfare_user")
+        password = os.getenv("POSTGRES_PASSWORD", "")
+        return f"postgresql://{user}:{password}@{host}:{port}/{db}"
+
+    # Default to verified SQLite database
+    sqlite_path = Path(__file__).parent.parent.parent / "airfare.db"
+    return f"sqlite:///{sqlite_path.as_posix()}"
 
 
 def create_db_engine(database_url: str = None):

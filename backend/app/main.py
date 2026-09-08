@@ -147,6 +147,11 @@ from fastapi import Request
 async def root(request: Request):
     accept = request.headers.get("accept", "")
     if "text/html" in accept:
+        # If UI dashboard bundle exists, direct browser visitors directly to the React application
+        if (PROJECT_ROOT / "frontend" / "dist" / "index.html").exists():
+            from fastapi.responses import RedirectResponse
+            return RedirectResponse(url="/app/")
+
         html_content = """<!DOCTYPE html>
 <html lang="en">
 <head>
