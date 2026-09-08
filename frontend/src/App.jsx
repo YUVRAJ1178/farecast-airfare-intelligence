@@ -36,7 +36,7 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  // Applied filters (what the backend has been queried with)
+  // Single source of truth for all active filters
   const [filters, setFilters] = useState({
     origin: 'DEL',
     destination: 'BOM',
@@ -45,14 +45,8 @@ export default function App() {
     travelDate: '',
   })
 
-  // Pending filters (what the user is currently editing in the home tab filter row)
-  const [pendingFilters, setPendingFilters] = useState({
-    origin: 'DEL',
-    destination: 'BOM',
-    airline: '',
-    cabinClass: 'Economy',
-    travelDate: '',
-  })
+  // Increment to force a re-fetch even when filter VALUES haven't changed
+  const [refreshKey, setRefreshKey] = useState(0)
 
   // All airports for dropdowns (expanded list)
   const ALL_AIRPORTS_MAP = {
@@ -87,7 +81,7 @@ export default function App() {
     } finally {
       setLoading(false)
     }
-  }, [filters.origin, filters.destination, filters.airline, filters.cabinClass, filters.travelDate])
+  }, [filters.origin, filters.destination, filters.airline, filters.cabinClass, filters.travelDate, refreshKey])
 
   const loadIndex = useCallback(async () => {
     const params = {}
@@ -108,7 +102,7 @@ export default function App() {
         setIndexData(null)
       }
     }
-  }, [filters.origin, filters.destination, filters.airline, filters.cabinClass])
+  }, [filters.origin, filters.destination, filters.airline, filters.cabinClass, refreshKey])
 
   useEffect(() => {
     loadData()
@@ -429,17 +423,17 @@ export default function App() {
                   </button>
                 </div>
 
-                {/* Filter row */}
+                {/* Filter row — all controls write directly to `filters` for immediate effect */}
                 <div className="filter-panel-row">
                   <div className="filter-group-col">
                     <label className="filter-group-label">Origin</label>
                     <select
                       className="filter-control-select"
-                      value={pendingFilters.origin}
+                      value={filters.origin}
                       onChange={(e) => {
                         const val = e.target.value
-                        const newDest = pendingFilters.destination === val ? '' : pendingFilters.destination
-                        setPendingFilters((prev) => ({ ...prev, origin: val, destination: newDest }))
+                        const newDest = filters.destination === val ? '' : filters.destination
+                        setFilters((prev) => ({ ...prev, origin: val, destination: newDest }))
                       }}
                     >
                       {ALL_AIRPORTS.map((code) => (
@@ -451,14 +445,14 @@ export default function App() {
                     <label className="filter-group-label">Destination</label>
                     <select
                       className="filter-control-select"
-                      value={pendingFilters.destination}
+                      value={filters.destination}
                       onChange={(e) => {
                         const val = e.target.value
-                        const newOrig = pendingFilters.origin === val ? '' : pendingFilters.origin
-                        setPendingFilters((prev) => ({ ...prev, destination: val, origin: newOrig }))
+                        const newOrig = filters.origin === val ? '' : filters.origin
+                        setFilters((prev) => ({ ...prev, destination: val, origin: newOrig }))
                       }}
                     >
-                      {ALL_AIRPORTS.filter((c) => c !== pendingFilters.origin).map((code) => (
+                      {ALL_AIRPORTS.filter((c) => c !== filters.origin).map((code) => (
                         <option key={code} value={code}>{ALL_AIRPORTS_MAP[code]}</option>
                       ))}
                     </select>
@@ -467,13 +461,8 @@ export default function App() {
                     <label className="filter-group-label">Airline</label>
                     <select
                       className="filter-control-select"
-                      value={pendingFilters.airline}
-                      onChange={(e) => {
-                        const updated = { ...pendingFilters, airline: e.target.value }
-                        setPendingFilters(updated)
-                        // Apply airline immediately so KPI cards update on selection
-                        setFilters(updated)
-                      }}
+                      value={filters.airline}
+                      onChange={(e) => setFilters((prev) => ({ ...prev, airline: e.target.value }))}
                     >
                       <option value="">All Airlines</option>
                       <option value="IndiGo">IndiGo</option>
@@ -489,16 +478,16 @@ export default function App() {
                     <input
                       type="date"
                       className="filter-control-input"
-                      value={pendingFilters.travelDate}
-                      onChange={(e) => setPendingFilters({ ...pendingFilters, travelDate: e.target.value })}
+                      value={filters.travelDate}
+                      onChange={(e) => setFilters((prev) => ({ ...prev, travelDate: e.target.value }))}
                     />
                   </div>
                   <div className="filter-group-col">
                     <label className="filter-group-label">Cabin Class</label>
                     <select
                       className="filter-control-select"
-                      value={pendingFilters.cabinClass}
-                      onChange={(e) => setPendingFilters({ ...pendingFilters, cabinClass: e.target.value })}
+                      value={filters.cabinClass}
+                      onChange={(e) => setFilters((prev) => ({ ...prev, cabinClass: e.target.value }))}
                     >
                       <option>Economy</option>
                       <option>Premium Economy</option>
@@ -508,8 +497,8 @@ export default function App() {
                   <button
                     className="btn-apply-filters-main"
                     onClick={() => {
-                      // Sync pendingFilters → filters to trigger backend fetch
-                      setFilters((prev) => ({ ...prev, ...pendingFilters }))
+                      // Force re-fetch even if filter values haven't changed
+                      setRefreshKey((k) => k + 1)
                     }}
                   >
                     <span>≡</span> Apply Filters
@@ -519,8 +508,8 @@ export default function App() {
                     style={{ background: '#f8fafc', color: '#475569', border: '1px solid #e2e8f0', boxShadow: 'none' }}
                     onClick={() => {
                       const reset = { origin: 'DEL', destination: 'BOM', airline: '', cabinClass: 'Economy', travelDate: '' }
-                      setPendingFilters(reset)
                       setFilters(reset)
+                      setRefreshKey((k) => k + 1)
                     }}
                   >
                     ↺ Reset
