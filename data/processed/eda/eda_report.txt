@@ -1,0 +1,36 @@
+AIRFARE INTELLIGENCE PLATFORM — EDA REPORT
+============================================================
+
+Dataset Dimensions: 94,914 rows × 17 columns
+Duplicate rows: 0
+
+FARE STATISTICS (INR)
+  Min:    ₹1,116
+  Max:    ₹124,917
+  Mean:   ₹18,595
+  Median: ₹7,761
+  StdDev: ₹21,711
+  P25:    ₹5,091
+  P75:    ₹20,300
+  P95:    ₹67,671
+
+MISSING VALUES
+  departure_time: 94,914 (100.0%)
+  arrival_time: 94,914 (100.0%)
+  is_interpolated: 94,800 (99.9%)
+  source: 114 (0.1%)
+  booking_date: 114 (0.1%)
+  days_left: 114 (0.1%)
+  duration_minutes: 117 (0.1%)
+  is_demo_anomaly: 114 (0.1%)
+
+AVERAGE FARE BY AIRLINE
+  Vistara: ₹32,007
+  Air India: ₹18,062
+  SpiceJet: ₹6,821
+  IndiGo: ₹6,728
+  GO FIRST: ₹6,412
+  AirAsia India: ₹5,272
+  StarAir: ₹4,982
+  Trujet: ₹3,277
+

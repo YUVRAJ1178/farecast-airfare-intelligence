@@ -1,0 +1,61 @@
+# ============================================================
+# Airfare Intelligence Platform — .gitignore
+# ============================================================
+
+# Secrets — NEVER commit
+.env
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.pyc
+.Python
+venv/
+.venv/
+env/
+.tox/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Data (large files — store separately)
+data/raw/*.csv
+data/raw/*.xlsx
+data/raw/*.zip
+
+# Models (store in model registry or DVC)
+models/*.joblib
+models/*.pkl
+
+# Logs
+*.log
+logs/
+
+# ML plots saved during EDA
+data/processed/eda_plots/
+
+# Node
+node_modules/
+# NOTE: frontend/dist/ is intentionally tracked so Docker builds on Render include the built SPA
+
+# Docker
+docker-compose.override.yml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+bin/
+*.exe

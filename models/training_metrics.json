@@ -1,0 +1,80 @@
+{
+  "best_model": "Random Forest",
+  "best_val_rmse": 3751.34,
+  "training_data_size": 210097,
+  "validation_data_size": 37077,
+  "test_data_size": 43619,
+  "features_used": [
+    "airline",
+    "origin",
+    "destination",
+    "cabin_class",
+    "stops",
+    "duration_minutes",
+    "days_left",
+    "departure_hour"
+  ],
+  "all_models": [
+    {
+      "model": "Linear Regression (Ridge baseline)",
+      "train_time_seconds": 0.34,
+      "validation": {
+        "split": "Validation",
+        "n_samples": 37077,
+        "mae": 4813.86,
+        "rmse": 7443.25,
+        "r2": 0.8943,
+        "mape": 40.43
+      },
+      "test": {
+        "split": "Test",
+        "n_samples": 43619,
+        "mae": 4762.72,
+        "rmse": 7366.29,
+        "r2": 0.8961,
+        "mape": 40.47
+      }
+    },
+    {
+      "model": "Random Forest",
+      "train_time_seconds": 45.38,
+      "validation": {
+        "split": "Validation",
+        "n_samples": 37077,
+        "mae": 2371.89,
+        "rmse": 3751.34,
+        "r2": 0.9732,
+        "mape": 26.15
+      },
+      "test": {
+        "split": "Test",
+        "n_samples": 43619,
+        "mae": 2388.79,
+        "rmse": 3820.78,
+        "r2": 0.972,
+        "mape": 26.54
+      }
+    },
+    {
+      "model": "Gradient Boosting",
+      "train_time_seconds": 93.53,
+      "validation": {
+        "split": "Validation",
+        "n_samples": 37077,
+        "mae": 3151.71,
+        "rmse": 4726.48,
+        "r2": 0.9574,
+        "mape": 30.15
+      },
+      "test": {
+        "split": "Test",
+        "n_samples": 43619,
+        "mae": 3140.59,
+        "rmse": 4733.43,
+        "r2": 0.9571,
+        "mape": 30.35
+      }
+    }
+  ],
+  "note": "All metrics computed on held-out data. These are actual measured values, not fabricated."
+}

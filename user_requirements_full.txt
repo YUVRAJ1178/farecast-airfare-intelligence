@@ -1,0 +1,277 @@
+<USER_REQUEST>
+I need you to fix and update my existing FareCast website. Do NOT rebuild the website from scratch. First inspect the existing codebase and understand the current components, routes, state management, APIs, charts, map implementation, and UI.
+
+Make the following changes carefully while preserving all existing working functionality.
+
+==================================================
+1. RENAME "FORECAST" TO "FARECAST"
+==================================================
+
+Wherever the website currently displays "Forecast" as the product/app name, change it to:
+
+"FareCast"
+
+This is a branding/name correction.
+
+IMPORTANT:
+- Do NOT rename the actual Forecast feature/page if "Forecast" refers to the airfare prediction/forecasting functionality.
+- Only correct the app/product branding where it currently incorrectly says "Forecast".
+- The application name should consistently be "FareCast".
+- Check the navbar, sidebar, dashboard, logo/title, browser/page title, headers, footer, and any other branding locations.
+
+==================================================
+2. FILTERS ARE NOT WORKING
+==================================================
+
+Fix all existing filters.
+
+Requirements:
+- Selecting a filter must actually update the displayed data.
+- Multiple filters must work together.
+- Reset/Clear Filters must restore the original dataset.
+- Filters must correctly update dependent charts, cards, tables, and other visualizations.
+- Check for state-management issues and incorrect filtering logic.
+- Remove any console errors related to filtering.
+- Do not replace the existing data with unnecessary dummy data.
+
+Test different combinations of filters before finishing.
+
+==================================================
+3. CHANGE THE DASHBOARD INTERFACE
+==================================================
+
+Improve the existing Dashboard interface while maintaining its current functionality.
+
+Make it:
+- Cleaner
+- More professional
+- Better organized
+- More visually consistent
+- Responsive
+- Easier to understand
+
+The dashboard should clearly present the important FareCast information such as:
+- Airfare/Price Index
+- Trends
+- Forecast/prediction information
+- Route information
+- Congestion information
+- Relevant analytics
+
+Do not add unnecessary sections just for visual purposes.
+
+==================================================
+4. REMOVE THE RIGHT-SIDE SIDEBAR
+==================================================
+
+Remove the unnecessary sidebar/panel currently appearing on the RIGHT side of the interface.
+
+IMPORTANT:
+- Do not remove the main navigation/sidebar.
+- Only remove the right-side panel.
+- After removing it, expand/reorganize the main content so the layout remains balanced.
+- Ensure there is no empty space or broken alignment.
+
+==================================================
+5. IMPROVE THE ML PREDICTION INTERFACE
+==================================================
+
+Redesign the existing ML Prediction interface.
+
+It should look like a proper airfare prediction tool.
+
+Improve:
+- Input arrangement
+- Source/destination selection
+- Date/booking inputs
+- Prediction button
+- Prediction result card
+- Price/trend visualization
+- Recommendation/insight presentation
+
+The predicted price should be visually prominent.
+
+If the existing project already has ML/API prediction logic, preserve and use it.
+
+DO NOT create fake ML predictions just to make the UI appear functional.
+
+==================================================
+6. ADD AN OPTION TO CHANGE THE PROTOTYPE PRICE INDEX
+==================================================
+
+Add a user/admin control that allows the prototype Price Index value to be changed.
+
+Requirements:
+- Provide a clear input/control.
+- Validate the entered value.
+- The updated value should immediately reflect wherever the Price Index is displayed.
+- Any dependent charts/calculations should update accordingly.
+- Keep the implementation modular so the prototype value can later be replaced with a backend/API value.
+- Do not allow invalid input to break the UI.
+
+If this is prototype data, clearly structure it as configurable prototype data.
+
+==================================================
+7. INTERCHANGE THE INDIA MAP AND 30-DAY VIEW
+==================================================
+
+THIS IS IMPORTANT — DO NOT MISINTERPRET THIS REQUIREMENT.
+
+The existing interface has an India Map view and a 30-Day view.
+
+I want these two views to SWITCH/INTERCHANGE when clicked.
+
+Current requirement:
+
+- When I click/select the INDIA MAP section/view:
+    → The 30-DAY view should appear in that position/section.
+
+- When I click/select the 30-DAY section/view:
+    → The INDIA MAP should appear in that position/section.
+
+In other words, the India Map and 30-Day visualization should behave like interchangeable/toggleable views.
+
+Do NOT simply remove the 30-Day view.
+Do NOT simply remove the India Map.
+Do NOT place them permanently side-by-side.
+
+Implement the interaction so the user can switch between:
+
+    INDIA MAP
+          ↕
+    30-DAY VIEW
+
+The selected view should render correctly inside the same intended dashboard visualization area.
+
+Make the transition/interaction smooth and make sure the layout does not jump or break.
+
+==================================================
+8. FIX INDIA MAP FOR CITIES
+==================================================
+
+The India map currently does not work correctly for some cities.
+
+Fix the city mapping and visualization.
+
+Requirements:
+- Verify latitude/longitude coordinates for supported cities.
+- Fix missing markers.
+- Fix incorrectly positioned markers.
+- Ensure multiple cities can appear simultaneously.
+- Handle cities with missing data gracefully.
+- Clicking/hovering a city should work correctly if this functionality already exists.
+- Ensure the map is responsive.
+
+Test with major Indian aviation cities including:
+
+Delhi
+Mumbai
+Bengaluru
+Hyderabad
+Chennai
+Kolkata
+Pune
+Ahmedabad
+Jaipur
+Goa
+
+Do not hardcode incorrect coordinates.
+
+==================================================
+9. CHANGE THE TAGLINE
+==================================================
+
+Change the website tagline to:
+
+"From Flight Prices to Market Insights"
+
+Make sure it is correctly positioned and responsive.
+
+==================================================
+10. CONGESTION RANKING
+==================================================
+
+Improve the Congestion Ranking section.
+
+It should display relevant routes/cities and their congestion ranking in a clear order.
+
+Requirements:
+- Show all relevant available routes/cities.
+- Rank them correctly.
+- Use the existing dataset wherever possible.
+- Generate rankings dynamically rather than unnecessarily hardcoding them.
+- Make the ranking easy to scan.
+- Ensure it remains responsive.
+
+==================================================
+11. REMOVE "POWERED BY AI"
+==================================================
+
+Remove the "Powered by AI" text/badge currently appearing in the bottom-left corner.
+
+After removing it:
+- Remove its container if unnecessary.
+- Fix any resulting spacing.
+- Make sure the bottom-left area looks intentional and clean.
+
+==================================================
+12. FINAL TESTING
+==================================================
+
+After making all changes, thoroughly test the entire website.
+
+Check:
+
+✓ FareCast branding
+✓ Forecast feature still works
+✓ Filters
+✓ Dashboard
+✓ Right-side sidebar removal
+✓ ML Prediction interface
+✓ Prototype Price Index control
+✓ India Map
+✓ 30-Day view
+✓ India Map ↔ 30-Day interchange/toggle
+✓ City markers
+✓ Congestion Ranking
+✓ New tagline
+✓ Removal of Powered by AI
+✓ Navigation
+✓ Responsive layout
+✓ Charts
+✓ API/data connections
+✓ Browser console errors
+
+IMPORTANT DEVELOPMENT RULES:
+
+- Do not rebuild the application from scratch.
+- Do not remove existing working functionality.
+- Reuse the current tech stack and components.
+- Do not unnecessarily introduce new dependencies.
+- Do not replace real functionality with dummy/static functionality.
+- Fix the underlying logic rather than hiding errors.
+- Preserve existing APIs and ML logic.
+- If something currently uses prototype/mock data, keep it structured so it can later be connected to the real backend.
+- Check the browser console and build output for errors before completing the task.
+
+At the end, give me a concise summary of:
+1. Files/components modified
+2. Bugs fixed
+3. UI changes made
+4. Any remaining limitations
+
+
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-09-08T10:59:45+05:30.
+
+The user's current state is as follows:
+Active Document: c:\project airways\airfare-intelligence\data\seed_regional_routes.py (LANGUAGE_PYTHON)
+Cursor is on line: 1
+Other open documents:
+- c:\project airways\airfare-intelligence\frontend\src\components\KPICards.jsx (LANGUAGE_JAVASCRIPT)
+- c:\project airways\airfare-intelligence\check_bundle.py (LANGUAGE_PYTHON)
+- c:\project airways\airfare-intelligence\backend\app\routes\index.py (LANGUAGE_PYTHON)
+- c:\project airways\airfare-intelligence\frontend\index.html (LANGUAGE_HTML)
+- c:\project airways\airfare-intelligence\update_css.py (LANGUAGE_PYTHON)
+</ADDITIONAL_METADATA>

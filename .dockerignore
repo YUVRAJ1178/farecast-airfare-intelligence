@@ -1,0 +1,35 @@
+# Git & Secrets (NEVER include secrets)
+.env
+*.env
+.git
+.gitignore
+
+# Python Cache & Env
+__pycache__/
+*.py[cod]
+*.pyo
+venv/
+.venv/
+env/
+
+# Frontend Dev & Build Cache
+frontend/node_modules/
+frontend/src/
+
+# Temporary test/debug scripts & binaries
+bin/
+*.exe
+*.png
+*.bak
+test_*.py
+debug_*.py
+patch_*.py
+inspect_*.py
+clean_*.py
+check_*.py
+find_*.py
+dom*.html
+
+# IDE
+.vscode/
+.idea/

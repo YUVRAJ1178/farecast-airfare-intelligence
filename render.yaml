@@ -1,0 +1,22 @@
+# ============================================================
+# Render Blueprint Specification — Airfare Intelligence Platform
+# ============================================================
+
+services:
+  - type: web
+    name: farecast-airfare-intelligence
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: oregon
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DEMO_MODE
+        value: "false"
+      - key: LOG_LEVEL
+        value: INFO
+      - key: IGNAV_API_KEY
+        sync: false # Set securely in Render dashboard UI; never committed
